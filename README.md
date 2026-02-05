@@ -1,62 +1,62 @@
 # AI Note Summarizer 📝✨
 
-A modern, full-stack AI-powered web application that summarizes long notes using the HuggingFace BART model.
+A premium, full-stack Writing Assistant that uses **Local AI (Ollama + Gemma 3)** to summarize notes and rephrase content in real-time. Designed with a sleek, glassmorphism UI.
 
-## 🚀 Features
-- **Modern UI**: Dark mode, glassmorphism, and responsive design.
-- **AI-Powered**: Summarizes text using state-of-the-art NLP models.
-- **History**: Automatically saves summaries to a PostgreSQL database.
-- **Dockerized**: Easy setup with Docker and Docker Compose.
-- **CI/CD**: Automated testing and build via GitHub Actions.
+## 🌟 Premium Features
+- **Local AI Context**: Uses your machine's power for 100% private, fast summarization (Ollama fallback to HuggingFace).
+- **Quillbot-style Rephrasing**: Click any word in the summary for instant AI-powered rephrasing suggestions.
+- **Dynamic Length Control**: Choose between **Short**, **Medium**, or **Detailed** summaries.
+- **Workspace Management**: Save summaries to a permanent History sidebar with individual delete and "Clear All" options.
+- **Copy to Clipboard**: Quick copy for your results.
+- **Glassmorphism UI**: High-end modern design with pulse status indicators and smooth animations.
 
 ## 🧰 Tech Stack
-- **Frontend**: React + Vite + Axios
+- **Frontend**: React + Vite + Lucide Icons + CSS Inter
 - **Backend**: Node.js + Express
-- **Database**: PostgreSQL
-- **AI**: HuggingFace API (BART model)
+- **Database**: PostgreSQL (Dockerized)
+- **AI Engine**: Ollama (Running Gemma 3:4b locally)
 - **Containerization**: Docker & Docker Compose
-- **Deploy**: Cloud (Render)
 
 ---
 
 ## 🛠️ Local Setup
 
 ### 1. Prerequisites
-- Docker & Docker Compose installed.
-- A HuggingFace API Token (Free). [Get it here](https://huggingface.co/settings/tokens).
+- [Docker & Docker Compose](https://www.docker.com/products/docker-desktop/) installed.
+- [Ollama](https://ollama.com/) installed and running on your host machine.
+- Run `ollama pull gemma3:4b` to download the model.
 
 ### 2. Configure Environment
-1. Open `server/.env`.
-2. Replace `YOUR_HF_TOKEN` with your actual HuggingFace API Token.
+1. Check `server/.env` to ensure your database credentials match (default is `postgres`).
+2. (Optional) Add `HF_API_TOKEN` if you want a cloud fallback if Ollama is off.
 
 ### 3. Run with Docker
 In the root directory, run:
 ```bash
 docker-compose up --build
 ```
-- Frontend: `http://localhost:5173`
-- Backend: `http://localhost:5000`
+- **App**: `http://localhost:5173`
+- **API**: `http://localhost:5000`
 
 ---
 
-## ☁️ Deployment (Render)
+## ☁️ Deployment (Vercel + Cloud)
 
-1. **GitHub**: Push this repository to GitHub.
-2. **Database**: Create a "Free Instance" of PostgreSQL on Render.
-3. **Web Service (Backend)**:
-   - Create a Web Service for the `server` folder.
-   - Use the `Dockerfile` in the server folder.
-   - Add Environment Variables (`DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_NAME`, `HF_API_TOKEN`).
-4. **Static Site (Frontend)**:
-   - Create a Static Site for the `client` folder.
-   - Build Command: `npm run build`
-   - Publish Directory: `dist`
-   - Add Environment Variable `VITE_API_BASE` for your backend URL.
+1. **Frontend (Vercel)**:
+   - Connect your GitHub repo to Vercel.
+   - Point the root directory to `client`.
+   - Set Build Command: `npm run build`
+   - Set Output Directory: `dist`
+   - **Environment Variable**: `VITE_API_BASE` (Point this to your deployed backend URL).
+
+2. **Backend (Render/Heroku/Railway)**:
+   - Deploy the `server` folder using its `Dockerfile`.
+   - Setup a PostgreSQL database and provide the connection variables.
+   - **Note**: Rephrasing requires Ollama. For cloud hosting, you would need to point `OLLAMA_URL` to a cloud GPU provider or use the HuggingFace fallback logic.
 
 ---
 
 ## 🏗️ Project Structure
-- `/client`: React frontend
-- `/server`: Express backend & AI logic
-- `/.github`: CI/CD workflows
-- `docker-compose.yml`: Local orchestration
+- `/client`: React writing studio & UI
+- `/server`: API, rephrasing logic, and DB integration
+- `docker-compose.yml`: Local setup for the full stack
