@@ -1,0 +1,44 @@
+name: AI Note Summarizer CI/CD
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Install Server Dependencies
+        run: |
+          cd server
+          npm install
+
+      - name: Install Client Dependencies
+        run: |
+          cd client
+          npm install
+
+      - name: Build Client
+        run: |
+          cd client
+          npm run build
+
+  deploy:
+    needs: build-and-test
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to Render
+        run: |
+          # This is a placeholder for actual Render Deploy Hook
+          # You would typically: curl -X POST https://api.render.com/deploy/srv-${{ secrets.RENDER_SERVICE_ID }}?key=${{ secrets.RENDER_API_KEY }}
+          echo "Triggering deployment to Render..."
