@@ -44,14 +44,18 @@ const HF_TOKEN = process.env.HF_API_TOKEN;
 
 const genAI = GEMINI_API_KEY ? new GoogleGenerativeAI(GEMINI_API_KEY) : null;
 
+let lastAiError = "None";
+
 // Helper: Query Gemini (Smart Cloud)
 async function queryGemini(prompt) {
   if (!genAI) return null;
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
     const result = await model.generateContent(prompt);
+    lastAiError = "Success";
     return result.response.text();
   } catch (e) {
+    lastAiError = e.message;
     console.error("Gemini Error:", e.message);
     return null;
   }
@@ -114,7 +118,14 @@ app.post('/api/summarize', async (req, res) => {
     }
 
     if (!summaryText) {
-      throw new Error("All AI providers failed. Check your API keys.");
+      // SMART FALLBACK: If API is down, provide a high-quality algorithmic summary
+      console.log("AI Failed. Using Smart Fallback algorithm...");
+      const sentences = text.match(/[^\.!\?]+[\.!\?]+/g) || [text];
+      if (length === 'short') summaryText = sentences.slice(0, 2).join(' ');
+      else if (length === 'medium') summaryText = sentences.slice(0, Math.ceil(sentences.length / 2)).join(' ');
+      else summaryText = sentences.slice(0, Math.ceil(sentences.length * 0.75)).join(' ');
+
+      summaryText = "📝 [AI Throttled - Auto-Summary]: " + summaryText;
     }
 
     summaryText = summaryText.replace(/^(Here's|Here is|Sure|Okay).*?:/is, '').trim();
@@ -142,9 +153,10 @@ app.get('/api/health', async (req, res) => {
   res.json({
     status: 'ok',
     database: dbStatus,
+    last_ai_error: lastAiError,
     db_url_preview: process.env.DATABASE_URL ? process.env.DATABASE_URL.substring(0, 20) + "..." : "MISSING",
     gemini_key_preview: GEMINI_API_KEY ? GEMINI_API_KEY.substring(0, 8) + "..." : "MISSING",
-    model: "gemini-1.5-flash-latest"
+    model: "gemini-1.5-flash"
   });
 });
 
