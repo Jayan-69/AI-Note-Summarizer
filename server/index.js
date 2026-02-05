@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const { Pool } = require('pg');
+const { GoogleGenerativeAI } = require("@google/generative-ai");
 require('dotenv').config();
 
 const app = express();
@@ -9,12 +10,12 @@ const port = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
+// Database Setup
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false
 });
 
-// Fallback pool for local dev if DATABASE_URL is missing
 const dbConfig = {
   user: process.env.DB_USER || 'postgres',
   host: process.env.DB_HOST || 'localhost',
@@ -38,10 +39,27 @@ const initDb = async () => {
   } catch (err) { console.error("DB Init Error:", err.message); }
 };
 
+// AI Configurations
 const OLLAMA_URL = process.env.OLLAMA_URL || 'http://localhost:11434/api/generate';
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const HF_TOKEN = process.env.HF_API_TOKEN;
 
-// Helper: Query Hugging Face
+const genAI = GEMINI_API_KEY ? new GoogleGenerativeAI(GEMINI_API_KEY) : null;
+
+// Helper: Query Gemini (Smart Cloud)
+async function queryGemini(prompt) {
+  if (!genAI) return null;
+  try {
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+    const result = await model.generateContent(prompt);
+    return result.response.text();
+  } catch (e) {
+    console.error("Gemini Error:", e.message);
+    return null;
+  }
+}
+
+// Helper: Query Hugging Face (Backup Cloud)
 async function queryHF(prompt) {
   if (!HF_TOKEN) return null;
   try {
@@ -61,6 +79,11 @@ app.post('/api/summarize', async (req, res) => {
 
   try {
     let summaryText = "";
+    const prompt = `Task: Summarize the following text in ${length} length.
+Rules: 
+- Return ONLY the summary.
+- No introductory filler like "Here is a summary".
+Text: ${text}`;
 
     // 1. Try Ollama (Local)
     try {
@@ -69,9 +92,9 @@ app.post('/api/summarize', async (req, res) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           model: 'gemma3:4b',
-          prompt: `Summarize this in ${length} length: ${text}`,
+          prompt: prompt,
           stream: false,
-          options: { num_predict: 250 }
+          options: { num_predict: 500 }
         }),
       });
       if (ollamaRes.ok) {
@@ -80,14 +103,21 @@ app.post('/api/summarize', async (req, res) => {
       }
     } catch (e) { /* Ollama not running */ }
 
-    // 2. Try Hugging Face fallback (Cloud)
-    if (!summaryText) {
+    // 2. Try Gemini (Primary Cloud Fallback)
+    if (!summaryText && GEMINI_API_KEY) {
+      console.log("Using Gemini for summarization...");
+      summaryText = await queryGemini(prompt);
+    }
+
+    // 3. Try Hugging Face (Backup Cloud Fallback)
+    if (!summaryText && HF_TOKEN) {
+      console.log("Using HuggingFace for summarization...");
       summaryText = await queryHF(text);
     }
 
-    // 3. Mock fallback
+    // 4. Mock fallback
     if (!summaryText) {
-      summaryText = "[Offline] " + text.substring(0, 100) + "...";
+      summaryText = "[Offline Mode] " + text.substring(0, 150) + "... (Please add GEMINI_API_KEY for cloud hosting)";
     }
 
     summaryText = summaryText.replace(/^(Here's|Here is|Sure|Okay).*?:/is, '').trim();
@@ -105,9 +135,12 @@ app.post('/api/summarize', async (req, res) => {
 app.post('/api/suggest', async (req, res) => {
   const { word, context } = req.body;
   try {
-    const prompt = `List 3 synonyms for "${word}". Format: word1, word2, word3`;
+    const prompt = `Give me 3 synonyms for the word "${word}" in this context: "${context}". 
+Return ONLY the 3 words separated by commas. No other text.`;
+
     let suggestionsRaw = "";
 
+    // 1. Try Ollama
     try {
       const response = await fetch(OLLAMA_URL, {
         method: 'POST',
@@ -123,10 +156,15 @@ app.post('/api/suggest', async (req, res) => {
         const data = await response.json();
         suggestionsRaw = data.response;
       }
-    } catch (e) {
-      // Simple fallback synonyms if AI is offline
-      suggestionsRaw = "choice1, choice2, choice3";
+    } catch (e) { }
+
+    // 2. Try Gemini
+    if (!suggestionsRaw && GEMINI_API_KEY) {
+      suggestionsRaw = await queryGemini(prompt);
     }
+
+    // Default Fallback
+    if (!suggestionsRaw) suggestionsRaw = "choice1, choice2, choice3";
 
     let suggestions = suggestionsRaw
       .replace(/^(Here are|Sure|Synonyms).*?:/is, '')
