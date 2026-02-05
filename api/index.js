@@ -13,7 +13,9 @@ app.use(express.json());
 // Database Setup
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false
+  ssl: process.env.DATABASE_URL ? {
+    rejectUnauthorized: false
+  } : false
 });
 
 const dbConfig = {
@@ -50,7 +52,7 @@ const genAI = GEMINI_API_KEY ? new GoogleGenerativeAI(GEMINI_API_KEY) : null;
 async function queryGemini(prompt) {
   if (!genAI) return null;
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
     const result = await model.generateContent(prompt);
     return result.response.text();
   } catch (e) {
