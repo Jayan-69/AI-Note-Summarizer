@@ -215,6 +215,7 @@ textarea,
   overflow-y: auto;
   white-space: pre-wrap;
   padding-bottom: 3rem;
+  color: var(--color-text);
 }
 
 /* Buttons */
@@ -229,6 +230,11 @@ textarea,
 
 .btn-primary:active {
   transform: scale(0.98);
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .copy-btn-inline {
