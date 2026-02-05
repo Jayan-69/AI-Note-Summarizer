@@ -195,7 +195,12 @@ app.delete('/api/history-clear', async (req, res) => {
   res.json({ message: 'OK' });
 });
 
-app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
-  initDb();
-});
+// Export for Vercel
+module.exports = app;
+
+if (process.env.NODE_ENV !== 'production') {
+  app.listen(port, () => {
+    console.log(`Server running on port ${port}`);
+    initDb();
+  });
+}

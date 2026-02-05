@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import './index.css';
 
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000/api';
+const API_BASE = '/api';
 
 function App() {
   const [inputText, setInputText] = useState('');
