@@ -11,8 +11,16 @@ app.use(cors());
 app.use(express.json());
 
 // Database Setup - High Compatibility for Vercel
+let dbUrl = process.env.DATABASE_URL || '';
+// Auto-fix if user pasted the entire 'psql' command
+if (dbUrl.includes("'")) {
+  dbUrl = dbUrl.split("'")[1];
+} else if (dbUrl.startsWith("psql ")) {
+  dbUrl = dbUrl.replace("psql ", "").trim();
+}
+
 const activePool = new Pool({
-  connectionString: process.env.DATABASE_URL,
+  connectionString: dbUrl,
   ssl: { rejectUnauthorized: false }
 });
 
