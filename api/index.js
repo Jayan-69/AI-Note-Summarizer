@@ -122,8 +122,22 @@ app.post('/api/summarize', async (req, res) => {
   }
 });
 
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', hasGemini: !!GEMINI_API_KEY, hasDb: !!process.env.DATABASE_URL });
+app.get('/api/health', async (req, res) => {
+  let dbStatus = "Checking...";
+  try {
+    const result = await activePool.query('SELECT NOW()');
+    dbStatus = "Connected: " + result.rows[0].now;
+  } catch (e) {
+    dbStatus = "Error: " + e.message;
+  }
+
+  res.json({
+    status: 'ok',
+    database: dbStatus,
+    db_url_preview: process.env.DATABASE_URL ? process.env.DATABASE_URL.substring(0, 20) + "..." : "MISSING",
+    gemini_key_preview: GEMINI_API_KEY ? GEMINI_API_KEY.substring(0, 8) + "..." : "MISSING",
+    model: "gemini-1.5-flash-latest"
+  });
 });
 
 app.post('/api/suggest', async (req, res) => {
