@@ -10,23 +10,11 @@ const port = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
-// Database Setup
-const pool = new Pool({
+// Database Setup - High Compatibility for Vercel
+const activePool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.DATABASE_URL ? {
-    rejectUnauthorized: false
-  } : false
+  ssl: { rejectUnauthorized: false }
 });
-
-const dbConfig = {
-  user: process.env.DB_USER || 'postgres',
-  host: process.env.DB_HOST || 'localhost',
-  database: process.env.DB_NAME || 'notes_db',
-  password: process.env.DB_PASSWORD || 'postgres',
-  port: process.env.DB_PORT || 5432,
-};
-
-const activePool = process.env.DATABASE_URL ? pool : new Pool(dbConfig);
 
 const initDb = async () => {
   try {
