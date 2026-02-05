@@ -79,11 +79,7 @@ app.post('/api/summarize', async (req, res) => {
 
   try {
     let summaryText = "";
-    const prompt = `Task: Summarize the following text in ${length} length.
-Rules: 
-- Return ONLY the summary.
-- No introductory filler like "Here is a summary".
-Text: ${text}`;
+    const prompt = `Task: Summarize the following text in ${length} length. Return ONLY the summary. No intro filler. Text: ${text}`;
 
     // 1. Try Ollama (Local)
     try {
@@ -101,23 +97,26 @@ Text: ${text}`;
         const data = await ollamaRes.json();
         summaryText = data.response;
       }
-    } catch (e) { /* Ollama not running */ }
+    } catch (e) { /* Ollama offline */ }
 
     // 2. Try Gemini (Primary Cloud Fallback)
-    if (!summaryText && GEMINI_API_KEY) {
-      console.log("Using Gemini for summarization...");
-      summaryText = await queryGemini(prompt);
+    if (!summaryText) {
+      if (GEMINI_API_KEY) {
+        console.log("Attempting Gemini Summarization...");
+        summaryText = await queryGemini(prompt);
+      } else {
+        console.warn("GEMINI_API_KEY is missing! Cannot use cloud AI.");
+      }
     }
 
-    // 3. Try Hugging Face (Backup Cloud Fallback)
+    // 3. Try Hugging Face (Backup)
     if (!summaryText && HF_TOKEN) {
-      console.log("Using HuggingFace for summarization...");
+      console.log("Attempting HuggingFace fallback...");
       summaryText = await queryHF(text);
     }
 
-    // 4. Mock fallback
     if (!summaryText) {
-      summaryText = "[Offline Mode] " + text.substring(0, 150) + "... (Please add GEMINI_API_KEY for cloud hosting)";
+      throw new Error("All AI providers failed. Check your API keys.");
     }
 
     summaryText = summaryText.replace(/^(Here's|Here is|Sure|Okay).*?:/is, '').trim();
@@ -128,8 +127,13 @@ Text: ${text}`;
     );
     res.json(result.rows[0]);
   } catch (error) {
-    res.status(500).json({ error: 'Summarization failed' });
+    console.error("SUMMARIZE ERROR:", error.message);
+    res.status(500).json({ error: error.message || 'Summarization failed' });
   }
+});
+
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', hasGemini: !!GEMINI_API_KEY, hasDb: !!process.env.DATABASE_URL });
 });
 
 app.post('/api/suggest', async (req, res) => {
@@ -198,9 +202,11 @@ app.delete('/api/history-clear', async (req, res) => {
 // Export for Vercel
 module.exports = app;
 
+// Ensure DB is initialized
+initDb().catch(err => console.error("Async DB Init Error:", err));
+
 if (process.env.NODE_ENV !== 'production') {
   app.listen(port, () => {
     console.log(`Server running on port ${port}`);
-    initDb();
   });
 }
